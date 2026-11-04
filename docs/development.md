@@ -31,7 +31,8 @@ Secrets and machine-specific paths may be supplied through the process environme
 | Configuration | Purpose |
 |---|---|
 | Provider-specific API key variables | Optional; needed only for the selected API provider. The supported UI key names are defined in `src/core/auth-keys.ts`. |
-| `TAVILY_API_KEY` / `BRAVE_API_KEY` | Optional search adapters. Research remains available without a search key and can fetch known URLs. |
+| `TAVILY_API_KEY` / `BRAVE_API_KEY` | Optional search adapters. Research remains available without a search key and can fetch known URLs. A query repeated within 30 minutes is answered from an in-memory cache and doesn't use the plan's allowance. |
+| `SEARXNG_URL` | Optional keyless search: the base URL of a self-hosted SearXNG instance (e.g. `http://localhost:8080`). Used when no Tavily/Brave key is set, or when pinned in Settings → Agent. See [Keyless search with SearXNG](#keyless-search-with-searxng). |
 | `DEEPGRAM_API_KEY` | Optional dictation: short-lived token minting on the server; audio streams directly from the browser to Deepgram. |
 | `CHROME_PATH` | Optional Chrome/Chromium executable fallback for demo verification. The Electron browser helper is primary; no extra Chromium is downloaded. PDFs/SVGs use native rendering. |
 | `LH_DATA_DIR` | Relocates mutable chats, jobs, graph, settings and prompt overrides; default is repo `data/`. |
@@ -44,6 +45,37 @@ Provider-specific references:
 - [Claude Code](claude-code.md): opt-in local CLI setup, native authentication, process/tool bridge and session lifecycle. Its CLI authentication is not configured by adding an ordinary LearnHarness API key.
 - [Custom providers](custom-providers.md): the supported OpenAI-compatible endpoint editor, authentication binding, models and limits.
 - [Compaction and accounting](compaction-accounting.md): context fitting, usage and current-catalog pricing. There is no generated local rate-table maintenance step.
+
+### Keyless search with SearXNG
+
+[SearXNG](https://docs.searxng.org/) is an open-source metasearch engine you host yourself; it needs no API key. One way to run it, with Docker, bound to this machine only:
+
+```powershell
+docker run -d --name searxng -p 127.0.0.1:8080:8080 -v "${PWD}/searxng:/etc/searxng" searxng/searxng
+```
+
+The first start writes `searxng/settings.yml`. Edit it, then `docker restart searxng`:
+
+```yaml
+use_default_settings: true
+server:
+  secret_key: "<a long random string>"
+  limiter: false        # private instance: the limiter only throttles YOUR requests
+search:
+  formats:
+    - html
+    - json              # required — without it every API request is a 403
+```
+
+Then set `SEARXNG_URL` to `http://localhost:8080` (Settings → Providers → Search, or the environment). With no Tavily/Brave key it activates automatically; with one, pin SearXNG under Settings → Agent → Search engine.
+
+SearXNG scrapes its upstream engines (Bing, DuckDuckGo, Google, …), which can CAPTCHA or rate-limit automated traffic; SearXNG then suspends that engine for a while. To keep this rare:
+
+- Run it on a home (residential) connection, not a cloud VPS.
+- Keep several general engines enabled so one suspended engine doesn't empty the results.
+- Leave SearXNG's default suspension times alone — they are its backoff.
+
+The app adds its own politeness on top: SearXNG requests go out one at a time, at least 1.5 s apart across all research jobs, recent results are reused from a small in-memory cache (30 minutes, at most 200 queries — RAM only), and failed searches are never retried automatically. When every upstream engine failed, the researcher gets an error naming them instead of an empty result list.
 
 ### Subscription connections in web/dev
 

@@ -27,6 +27,10 @@ export interface AuthKeyInfo {
 	description: string;
 	/** Where the user gets a key (opens in the real browser via the shell). */
 	docsUrl: string;
+	/** What the value is — absent = a secret key. "url" = a base URL that
+	 *  configures a self-hosted service (SearXNG); the Keys page words its
+	 *  paste field + docs link accordingly. */
+	valueKind?: "url";
 }
 
 export const AUTH_KEYS: readonly AuthKeyInfo[] = [
@@ -47,6 +51,13 @@ export const AUTH_KEYS: readonly AuthKeyInfo[] = [
 		label: "Brave Search",
 		description: "Web-search engine for the researcher sub-agent — the alternative to Tavily. Setting the key activates it.",
 		docsUrl: "https://brave.com/search/api/",
+	},
+	{
+		id: "SEARXNG_URL",
+		label: "SearXNG",
+		description: "Base URL of your self-hosted SearXNG instance (e.g. http://localhost:8080) — keyless web search for the researcher. JSON output must be enabled in its settings.yml.",
+		docsUrl: "https://docs.searxng.org/admin/installation.html",
+		valueKind: "url",
 	},
 ] as const;
 
@@ -177,8 +188,25 @@ export function validateKeyShape(id: string, rawValue: string): KeyShapeResult {
 		case "DEEPGRAM_API_KEY":
 			// No public format — the length floor only catches truncated pastes.
 			return nonEmpty(20);
+		case "SEARXNG_URL":
+			return isPlainBaseUrl(value)
+				? { ok: true }
+				: { ok: false, error: `${id} must be an http(s) base URL like http://localhost:8080 (no credentials, ? or #)` };
 		default:
 			return { ok: false, error: `unknown key "${id}" (supported: ${[...AUTH_KEY_IDS].join(", ")})` };
+	}
+}
+
+/** A usable service base URL: absolute http(s), no credentials, no query
+ *  or fragment — the same rules as core/settings.ts normalizeBaseUrl
+ *  (not imported: settings.ts already imports this module). */
+function isPlainBaseUrl(value: string): boolean {
+	if (!value || /\s/.test(value) || value.includes("?") || value.includes("#")) return false;
+	try {
+		const url = new URL(value);
+		return (url.protocol === "http:" || url.protocol === "https:") && !url.username && !url.password;
+	} catch {
+		return false;
 	}
 }
 

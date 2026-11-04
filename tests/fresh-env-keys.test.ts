@@ -34,6 +34,7 @@ for (const varName of [
 	"DEEPGRAM_API_KEY",
 	"TAVILY_API_KEY",
 	"BRAVE_API_KEY",
+	"SEARXNG_URL",
 	"OPENAI_API_KEY",
 	"ZAI_API_KEY",
 ]) {
