@@ -1,15 +1,38 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { DICTATION_LANGUAGES, type DictationLanguage } from "@/src/core";
+import {
+	DICTATION_ENGINES, DICTATION_ENGINE_INFO, DICTATION_LANGUAGES, isDictationEngine,
+	type DictationLanguage,
+} from "@/src/core";
 import { MenuShell } from "@/components/menu-shell";
 import { Hint } from "@/components/ui/hint";
-import { SettingsMenuTrigger, SettingsRow } from "@/components/settings/controls";
+import { SettingsMenuTrigger, SettingsRow, ThinSelect } from "@/components/settings/controls";
 import { SearchMenuList } from "@/components/settings/search-menu-list";
 import { useDictationActive } from "@/components/dictation-state";
 import { useDictationLanguage } from "@/components/dictation-preference";
 
 type LanguagePreference = ReturnType<typeof useDictationLanguage>;
+
+/** Which speech-to-text engine dictation uses: Deepgram (cloud, the
+ *  default) or a self-hosted Whisper server. Shares the language store —
+ *  every write carries both fields (the section is replace-whole). */
+export function DictationEngineSetting() {
+	const { language, engine, saving, saveEngine, load } = useDictationLanguage();
+	const active = useDictationActive();
+	useEffect(() => { if (language === undefined) void load().catch(() => {}); }, [language, load]);
+	return <SettingsRow label="Engine" testid="row-dictation-engine" dimmed={active}>
+		<ThinSelect
+			value={engine}
+			ariaLabel="Dictation engine"
+			testid="dictation-engine"
+			disabled={active || saving || language === undefined}
+			onChange={(next) => { if (isDictationEngine(next)) void saveEngine(next); }}
+		>
+			{DICTATION_ENGINES.map((id) => <option key={id} value={id}>{DICTATION_ENGINE_INFO[id].label}</option>)}
+		</ThinSelect>
+	</SettingsRow>;
+}
 
 export function DictationLanguageSetting() {
 	const preference = useDictationLanguage();

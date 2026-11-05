@@ -30,13 +30,47 @@ Nonsecret settings are deltas in `<data root>/settings.json`; absent values reso
 | `LH_DATA_DIR` | Mutable chats/jobs/graph/settings/prompts; default repo `data/`. |
 | `LH_AUTH_FILE` | Keys/custom-endpoint binding; default repo-root `auth.json`, outside `data/`. |
 | Provider API-key variables | Optional, selected-provider dependent; UI names are in `src/core/auth-keys.ts`. |
-| `TAVILY_API_KEY`, `BRAVE_API_KEY`, `EXA_API_KEY`, `FIRECRAWL_API_KEY`, `OLLAMA_API_KEY` | Optional search adapters. Without a Settings pin, the first keyed engine wins: Tavily → Brave → Exa → Firecrawl → Ollama. A pinned engine requires its own key; no silent fallback. Ollama search is hosted at ollama.com, not a local model server. Page fetching is independent; research can fetch known URLs without a search key. |
+| `TAVILY_API_KEY`, `BRAVE_API_KEY`, `EXA_API_KEY`, `FIRECRAWL_API_KEY`, `OLLAMA_API_KEY` | Optional search adapters. Without a Settings pin, the first configured engine wins: Tavily → Brave → Exa → Firecrawl → Ollama → SearXNG. A pinned engine requires its own key; no silent fallback. Ollama search is hosted at ollama.com, not a local model server. A query repeated within 30 minutes is answered from an in-memory cache and doesn't use the plan's allowance. Page fetching is independent; research can fetch known URLs without a search key. |
+| `SEARXNG_URL` | Optional keyless search: the base URL of a self-hosted SearXNG instance (e.g. `http://localhost:8080`). Last in the automatic order, so any search API key wins unless SearXNG is pinned in Settings → Agent. See [Keyless search with SearXNG](#keyless-search-with-searxng). |
 | `DEEPGRAM_API_KEY` | Optional dictation token minting. |
+| `WHISPER_URL` | Optional local dictation: base URL of an OpenAI-compatible Whisper server (e.g. `http://localhost:8000`, see [docker/whisper](../docker/whisper/README.md)). Audio is POSTed through `/api/stt/transcribe` once per run. |
+| `WHISPER_MODEL` | Optional model id for `WHISPER_URL` (default `Systran/faster-whisper-large-v3`). |
 | `CHROME_PATH` | Chrome/Chromium executable fallback for demo verification; Electron's browser helper is primary. No extra Chromium is downloaded. |
 
 Ordinary Next development can read `.env.local`. Real environment keys take precedence over saved keys. Saved auth is restrictive-permission plaintext, not an encrypted vault. Packaged Electron sets separate data/auth locations under `userData`; it does not use the repo development profile.
 
 Provider-specific setup and limitations: [Claude Code](claude-code.md), [custom endpoints](custom-providers.md), [context/cost accounting](compaction-accounting.md).
+
+### Keyless search with SearXNG
+
+[SearXNG](https://docs.searxng.org/) is an open-source metasearch engine you host yourself; it needs no API key. One way to run it, with Docker, bound to this machine only:
+
+```powershell
+docker run -d --name searxng -p 127.0.0.1:8080:8080 -v "${PWD}/searxng:/etc/searxng" searxng/searxng
+```
+
+The first start writes `searxng/settings.yml`. Edit it, then `docker restart searxng`:
+
+```yaml
+use_default_settings: true
+server:
+  secret_key: "<a long random string>"
+  limiter: false        # private instance: the limiter only throttles YOUR requests
+search:
+  formats:
+    - html
+    - json              # required — without it every API request is a 403
+```
+
+Then set `SEARXNG_URL` to `http://localhost:8080` (Settings → Providers → Search, or the environment). With no search API key it activates automatically; with one, pin SearXNG under Settings → Agent → Search engine.
+
+SearXNG scrapes its upstream engines (Bing, DuckDuckGo, Google, …), which can CAPTCHA or rate-limit automated traffic; SearXNG then suspends that engine for a while. To keep this rare:
+
+- Run it on a home (residential) connection, not a cloud VPS.
+- Keep several general engines enabled so one suspended engine doesn't empty the results.
+- Leave SearXNG's default suspension times alone — they are its backoff.
+
+The app adds its own politeness on top: SearXNG requests go out one at a time, at least 1.5 s apart across all research jobs, recent results are reused from a small in-memory cache (30 minutes, at most 200 queries — RAM only), and failed searches are never retried automatically. When every upstream engine failed, the researcher gets an error naming them instead of an empty result list.
 
 ### Subscription connections in web/dev
 

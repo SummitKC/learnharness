@@ -1,0 +1,30 @@
+# Local Whisper for LearnHarness dictation — speaches (OpenAI-compatible
+# speech-to-text, faster-whisper under the hood). See README.md here.
+#
+# Run from THIS folder (docker/whisper/):
+#   docker compose up -d                                       # NVIDIA GPU
+#   docker compose -f compose.yaml -f compose.cpu.yaml up -d   # CPU only
+# (From the repo root: docker compose -f docker/whisper/compose.yaml up -d)
+#
+# Then set WHISPER_URL=http://localhost:8000 (Settings → Providers → Dictation).
+services:
+  whisper:
+    image: ghcr.io/speaches-ai/speaches:latest-cuda
+    container_name: learnharness-whisper
+    restart: unless-stopped
+    ports:
+      # Loopback only: the app server is the only client; nothing on the LAN.
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # Downloaded models persist across container restarts/upgrades.
+      - hf-hub-cache:/home/ubuntu/.cache/huggingface/hub
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  hf-hub-cache:

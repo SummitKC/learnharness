@@ -647,6 +647,14 @@ async function main() {
 
 	await app.whenReady();
 
+	// Local Whisper (dictation engine = whisper): start the Docker container
+	// in the background — never awaited, never blocks boot (log lines only).
+	require("./whisper-autostart.cjs").ensureWhisper({
+		settingsFile: path.join(DATA_DIR(), "settings.json"),
+		authFile: AUTH_FILE(),
+		log,
+	}).catch((e) => log(`whisper: autostart error ${e?.message ?? e}`));
+
 	// Dev mode: point at a running `next dev` server (LH_DEV_URL) — no
 	// spawn, no packaging, full HMR. The rest of this shell still applies
 	// (guards, menu, single instance).

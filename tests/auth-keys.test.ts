@@ -15,7 +15,7 @@ describe("the catalog", () => {
 	it("lists the curated app-service keys (provider keys live in the provider table)", () => {
 		assert.deepEqual(
 			AUTH_KEYS.map((k) => k.id),
-			["DEEPGRAM_API_KEY", "TAVILY_API_KEY", "BRAVE_API_KEY", "EXA_API_KEY", "FIRECRAWL_API_KEY", "OLLAMA_API_KEY"],
+			["DEEPGRAM_API_KEY", "WHISPER_URL", "TAVILY_API_KEY", "BRAVE_API_KEY", "EXA_API_KEY", "FIRECRAWL_API_KEY", "OLLAMA_API_KEY", "SEARXNG_URL"],
 		);
 		for (const k of AUTH_KEYS) {
 			assert.ok(k.label.length > 0, `${k.id} has a label`);
@@ -37,6 +37,7 @@ describe("the catalog", () => {
 		assert.ok(isKnownAuthKey("EXA_API_KEY"));
 		assert.ok(isKnownAuthKey("FIRECRAWL_API_KEY"));
 		assert.ok(isKnownAuthKey("OLLAMA_API_KEY"));
+		assert.ok(isKnownAuthKey("SEARXNG_URL"));
 		assert.ok(!isKnownAuthKey("OPENROUTER_API_KEY"));
 		assert.ok(!isKnownAuthKey("OPENAI_API_KEY"), "provider vars are a separate surface");
 		assert.ok(!isKnownAuthKey("FUTURE_PLANS_TOKEN"));
@@ -64,6 +65,22 @@ describe("validateKeyShape (the 400 gate — curated keys)", () => {
 		assert.ok(validateKeyShape("BRAVE_API_KEY", "b".repeat(40)).ok);
 		assert.ok(!validateKeyShape("BRAVE_API_KEY", "b".repeat(19)).ok, "truncated paste");
 		assert.ok(!validateKeyShape("BRAVE_API_KEY", "has whitespace here").ok);
+	});
+
+	it("SearXNG: a plain http(s) base URL — no credentials, query, fragment or whitespace (fork, 2026-11-03)", () => {
+		assert.ok(validateKeyShape("SEARXNG_URL", "http://localhost:8080").ok);
+		assert.ok(validateKeyShape("WHISPER_URL", "http://localhost:8000").ok);
+		assert.ok(validateKeyShape("WHISPER_URL", " http://127.0.0.1:8000/v1/ ").ok, "trimmed, path allowed");
+		assert.ok(!validateKeyShape("WHISPER_URL", "localhost:8000").ok, "no scheme");
+		assert.ok(!validateKeyShape("WHISPER_URL", "http://u:p@localhost:8000").ok, "no credentials");
+		assert.ok(validateKeyShape("SEARXNG_URL", "https://search.home.lan/searxng/").ok, "path prefix + trailing slash");
+		assert.ok(validateKeyShape("SEARXNG_URL", "  http://127.0.0.1:8888  ").ok, "trimmed first");
+		assert.ok(!validateKeyShape("SEARXNG_URL", "localhost:8080").ok, "no scheme");
+		assert.ok(!validateKeyShape("SEARXNG_URL", "ftp://localhost").ok, "not http(s)");
+		assert.ok(!validateKeyShape("SEARXNG_URL", "http://user:pass@localhost:8080").ok, "credentials");
+		assert.ok(!validateKeyShape("SEARXNG_URL", "http://localhost:8080/search?q=x").ok, "query");
+		assert.ok(!validateKeyShape("SEARXNG_URL", "http://local host").ok, "whitespace");
+		assert.ok(!validateKeyShape("SEARXNG_URL", "").ok, "empty fails");
 	});
 
 	it("Deepgram: no public format — a ≥20-char truncation guard, no whitespace", () => {

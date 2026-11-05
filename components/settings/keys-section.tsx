@@ -40,7 +40,12 @@ import { ClaudeCodeInstallationStatus } from "./claude-code-status.tsx";
 import { ProviderMenuList } from "./model-menu.tsx";
 import { MenuShell } from "@/components/menu-shell";
 import { notifySettingsSaved } from "@/components/settings-signal";
-import { DictationLanguageSetting } from "@/components/dictation-language";
+import { DictationEngineSetting, DictationLanguageSetting } from "@/components/dictation-language";
+import { useDictationLanguage } from "@/components/dictation-preference";
+
+/** The keys-store rows that configure a dictation engine (the rest of the
+ *  tool rows are search engines). */
+const DICTATION_KEY_IDS: ReadonlySet<string> = new Set(["DEEPGRAM_API_KEY", "WHISPER_URL"]);
 
 /** One pi-ai provider with plain API-key auth (the Platform seam —
  *  derived from pi-ai's own env-key table; no drift possible). */
@@ -162,6 +167,7 @@ export function keyStatusLine(status: AuthKeyStatus): string {
 function KeyTableRow({
 	label,
 	docsUrl,
+	isUrl = false,
 	status,
 	expanded,
 	onToggle,
@@ -173,6 +179,9 @@ function KeyTableRow({
 	label: string;
 	/** The "Get a key ↗" target — curated keys carry one. */
 	docsUrl?: string;
+	/** The value is a service URL, not a secret (SearXNG) — words the
+	 *  paste field and the docs link for a URL. */
+	isUrl?: boolean;
 	status: AuthKeyStatus;
 	expanded: boolean;
 	onToggle: () => void;
@@ -214,8 +223,8 @@ function KeyTableRow({
 						onKeyDown={(e) => {
 							if (e.key === "Enter") void save();
 						}}
-						placeholder="Paste key…"
-						aria-label={`${label} key`}
+						placeholder={isUrl ? "Paste URL, e.g. http://localhost:8080" : "Paste key…"}
+						aria-label={`${label} ${isUrl ? "URL" : "key"}`}
 						data-testid={`${testid}-input`}
 						disabled={busy}
 						autoFocus
@@ -281,7 +290,7 @@ function KeyTableRow({
 							onClick={(e) => e.stopPropagation()}
 							className="text-[10px] text-muted-foreground/60 underline-offset-2 hover:text-foreground hover:underline"
 						>
-							key ↗
+							{isUrl ? "docs" : "key"} ↗
 						</a>
 					)}
 					<span data-testid={`${testid}-status`} className="font-mono text-[11px] text-muted-foreground">
@@ -497,6 +506,7 @@ export function KeysSection({
 						key={status.id}
 						label={providerKeyLabel(status.id, providers) ?? status.info?.label ?? status.id}
 						docsUrl={status.info?.docsUrl}
+						isUrl={status.info?.valueKind === "url"}
 						status={status}
 						expanded={openRow === status.id}
 						onToggle={() => setOpenRow(openRow === status.id ? null : status.id)}
@@ -580,11 +590,12 @@ export function KeysSection({
 			</SettingsGroup>
 
 			{(["Dictation", "Search"] as const).map((label) => <SettingsGroup key={label} label={label} testid={label === "Dictation" ? "group-dictation" : "group-search"}>
-				{toolRows.filter((status) => label === "Dictation" ? status.id === "DEEPGRAM_API_KEY" : status.id !== "DEEPGRAM_API_KEY").map((status) => (
+				{toolRows.filter((status) => DICTATION_KEY_IDS.has(status.id) === (label === "Dictation")).map((status) => (
 					<KeyTableRow
 						key={status.id}
 						label={status.info?.label ?? status.id}
 						docsUrl={status.info?.docsUrl}
+						isUrl={status.info?.valueKind === "url"}
 						status={status}
 						expanded={openRow === status.id}
 						onToggle={() => setOpenRow(openRow === status.id ? null : status.id)}
@@ -599,15 +610,9 @@ export function KeysSection({
 					/>
 				))}
 				{label === "Dictation" && <>
+					<DictationEngineSetting />
 					<DictationLanguageSetting />
-					<p data-testid="dictation-setup-hint" className="px-1 text-[11px] leading-relaxed text-muted-foreground/70">
-						Create a <a
-							href="https://console.deepgram.com/"
-							target="_blank"
-							rel="noreferrer"
-							className="underline underline-offset-2 hover:text-foreground"
-						>Deepgram API key</a> with the Member role or higher, then add it above.
-					</p>
+					<DictationSetupHint />
 				</>}
 			</SettingsGroup>)}
 
@@ -1035,4 +1040,25 @@ function CustomEndpointEditor({
 			)}
 		</div>
 	);
+}
+
+/** The Dictation group's how-to line — follows the selected engine. */
+function DictationSetupHint() {
+	const { engine } = useDictationLanguage();
+	const link = "underline underline-offset-2 hover:text-foreground";
+	return <p data-testid="dictation-setup-hint" className="px-1 text-[11px] leading-relaxed text-muted-foreground/70">
+		{engine === "whisper"
+			? <>Run a local Whisper server (see <code>docker/whisper/</code> — <a
+				href="https://speaches.ai/installation/"
+				target="_blank"
+				rel="noreferrer"
+				className={link}
+			>speaches</a> in Docker), then add its base URL above, e.g. http://localhost:8000.</>
+			: <>Create a <a
+				href="https://console.deepgram.com/"
+				target="_blank"
+				rel="noreferrer"
+				className={link}
+			>Deepgram API key</a> with the Member role or higher, then add it above.</>}
+	</p>;
 }

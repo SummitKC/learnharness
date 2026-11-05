@@ -70,7 +70,7 @@ it("keyless settings keep Research interactive while search-engine setup retains
 	}
 });
 
-for (const { id, label, envVar } of SEARCH_ENGINES) {
+for (const { id, label, envVar, credential } of SEARCH_ENGINES) {
 it(`a ${label}-only key enables the engine menu and selecting ${label} saves the pin`, async () => {
 	const dom = parseHTML("<html><body><div id='root'></div></body></html>");
 	Object.assign(dom.window, { innerWidth: 1280, innerHeight: 800 });
@@ -110,7 +110,7 @@ it(`a ${label}-only key enables the engine menu and selecting ${label} saves the
 		const option = document.querySelector<HTMLButtonElement>(`[data-testid="engine-option-${id}"]`);
 		assert.ok(option);
 		assert.ok(option.textContent?.includes(label));
-		assert.match(option.textContent ?? "", /key/);
+		assert.match(option.textContent ?? "", credential === "URL" ? /URL/ : /key/);
 		act(() => option.click());
 		assert.deepEqual(written?.search, { engine: id });
 		await act(async () => trigger.click());

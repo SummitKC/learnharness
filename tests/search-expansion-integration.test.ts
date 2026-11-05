@@ -47,9 +47,12 @@ for (const { id, envVar, url, header, prefix, payload } of engines) {
 			assert.equal((init?.headers as Record<string, string>)[header], `${prefix}${expectedKey}`);
 			return Response.json(payload);
 		};
+		// A fresh query per call: the 30-minute result cache would otherwise
+		// answer a repeat locally, and this test needs every call on the wire.
+		let query = 0;
 		const search = async () => {
 			assert.equal(searchProvider()?.id, id);
-			assert.deepEqual(await searchProvider()!.search("evidence", 1), []);
+			assert.deepEqual(await searchProvider()!.search(`evidence ${++query}`, 1), []);
 			assert.ok(!JSON.stringify(searchStatus()).includes(fake), "status never carries key material");
 		};
 		await search();
@@ -77,9 +80,9 @@ for (const { id, envVar, url, header, prefix, payload } of engines) {
 	});
 }
 
-it("all five saved keys follow the approved Automatic order as keys are removed", () => {
+it("all six configured engines follow the approved Automatic order as they are removed", () => {
 	for (const { id, envVar } of SEARCH_ENGINES) {
-		const fake = id === "tavily" ? "tvly-fake-key-1234567890" : id === "firecrawl" ? "fc-fake-key-1234567890" : `${id}-fake-key-1234567890`;
+		const fake = id === "tavily" ? "tvly-fake-key-1234567890" : id === "firecrawl" ? "fc-fake-key-1234567890" : id === "searxng" ? "http://localhost:8080" : `${id}-fake-key-1234567890`;
 		assert.equal(saveKey(envVar, fake).ok, true);
 	}
 	for (const { id, envVar } of SEARCH_ENGINES) {

@@ -66,6 +66,7 @@ import {
 	SEARCH_ENGINES,
 	resolveSettings,
 	isFileAccessFolder,
+	searchEngineInfo,
 	type AgentSettings,
 	type CompactionSettings,
 	type GraphSettings,
@@ -504,7 +505,14 @@ export function AgentSection({
 		>
 			<span>{label}</span>
 			<span className="text-muted-foreground">
-				{live === null ? (active && <span aria-hidden>✓</span>) : live ? <span aria-hidden>✓ key</span> : <span aria-hidden>· no key</span>}
+				{live === null || id === "auto" ? (
+					active && <span aria-hidden>✓</span>
+				) : (
+					<span aria-hidden>
+						{live ? "✓ " : "· no "}
+						{searchEngineInfo(id).credential === "URL" ? "URL" : "key"}
+					</span>
+				)}
 			</span>
 		</button>
 	);

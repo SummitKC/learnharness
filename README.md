@@ -57,6 +57,8 @@ See [Getting started](docs/getting-started.md) for model setup, dictation, files
 
 All three platforms support in-app updates.
 
+**Dictation:** Create a [Deepgram API key](https://console.deepgram.com/) with the **Member role or higher** ([required for token minting](https://developers.deepgram.com/reference/auth/tokens/grant)) and add it under **Settings → Providers → Dictation**. Choose the language below the key; **Multilingual** supports automatic recognition and mixed-language speech. A `403 Insufficient permissions` error during token minting can indicate an insufficient key role. To dictate locally instead, run a Whisper server in Docker and switch **Engine** to **Whisper (local)**; see [docker/whisper](docker/whisper/README.md).
+
 ## Your keys, your data
 
 - **Your keys and models.** No LearnHarness subscription or markup. Billing depends on your provider, CLI configuration, subscription, or local setup. The live cost meter estimates known API costs, not subscription, CLI, or custom-endpoint charges.
