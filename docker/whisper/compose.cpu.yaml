@@ -1,0 +1,7 @@
+# CPU-only override: no GPU reservation, the CPU image. Use together with
+# compose.yaml (-f compose.yaml -f compose.cpu.yaml). Prefer a smaller model
+# on CPU (e.g. WHISPER_MODEL=Systran/faster-whisper-small).
+services:
+  whisper:
+    image: ghcr.io/speaches-ai/speaches:latest-cpu
+    deploy: !reset {}

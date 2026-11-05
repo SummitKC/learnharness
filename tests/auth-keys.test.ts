@@ -12,10 +12,10 @@ import { describe, it } from "node:test";
 import { AUTH_KEYS, genericProviderKeyGuard, isKnownAuthKey, maskKey, validateKeyShape } from "../src/core/auth-keys.ts";
 
 describe("the catalog", () => {
-	it("is exactly the four CURATED app-service keys (provider keys live in the provider table)", () => {
+	it("is exactly the five CURATED app-service keys (provider keys live in the provider table)", () => {
 		assert.deepEqual(
 			AUTH_KEYS.map((k) => k.id),
-			["DEEPGRAM_API_KEY", "TAVILY_API_KEY", "BRAVE_API_KEY", "SEARXNG_URL"],
+			["DEEPGRAM_API_KEY", "WHISPER_URL", "TAVILY_API_KEY", "BRAVE_API_KEY", "SEARXNG_URL"],
 		);
 		for (const k of AUTH_KEYS) {
 			assert.ok(k.label.length > 0, `${k.id} has a label`);
@@ -58,6 +58,10 @@ describe("validateKeyShape (the 400 gate — curated keys)", () => {
 
 	it("SearXNG: a plain http(s) base URL — no credentials, query, fragment or whitespace (fork, 2026-11-03)", () => {
 		assert.ok(validateKeyShape("SEARXNG_URL", "http://localhost:8080").ok);
+		assert.ok(validateKeyShape("WHISPER_URL", "http://localhost:8000").ok);
+		assert.ok(validateKeyShape("WHISPER_URL", " http://127.0.0.1:8000/v1/ ").ok, "trimmed, path allowed");
+		assert.ok(!validateKeyShape("WHISPER_URL", "localhost:8000").ok, "no scheme");
+		assert.ok(!validateKeyShape("WHISPER_URL", "http://u:p@localhost:8000").ok, "no credentials");
 		assert.ok(validateKeyShape("SEARXNG_URL", "https://search.home.lan/searxng/").ok, "path prefix + trailing slash");
 		assert.ok(validateKeyShape("SEARXNG_URL", "  http://127.0.0.1:8888  ").ok, "trimmed first");
 		assert.ok(!validateKeyShape("SEARXNG_URL", "localhost:8080").ok, "no scheme");

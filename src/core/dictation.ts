@@ -88,3 +88,59 @@ export function deepgramListenUrl(language: DictationLanguage): string {
 		"&smart_format=true&punctuate=true&endpointing=300" +
 		`&language=${encodeURIComponent(language)}`;
 }
+
+/* ── Engines (local-Whisper wave) ─────────────────────────────────────────
+ * Deepgram stays the default streaming engine. Whisper is a self-hosted
+ * alternative: any OpenAI-compatible /v1/audio/transcriptions server (the
+ * docs ship a speaches compose file — docker/whisper/compose.yaml),
+ * configured by its base URL (WHISPER_URL), the same seam as SEARXNG_URL.
+ *
+ * Whisper runs in BATCH mode: dictation's transcript is already deferred
+ * until the run ends (owner round 2, see components/dictation.tsx), so the
+ * capture is buffered locally and transcribed once, on stop. */
+export const DICTATION_ENGINES = ["deepgram", "whisper"] as const;
+export type DictationEngine = (typeof DICTATION_ENGINES)[number];
+
+export function isDictationEngine(value: unknown): value is DictationEngine {
+	return (DICTATION_ENGINES as readonly unknown[]).includes(value);
+}
+
+/** Display label + the auth-store var that configures each engine. */
+export const DICTATION_ENGINE_INFO: Readonly<Record<DictationEngine, { label: string; envVar: string }>> = {
+	deepgram: { label: "Deepgram", envVar: "DEEPGRAM_API_KEY" },
+	whisper: { label: "Whisper (local)", envVar: "WHISPER_URL" },
+};
+
+/** Whisper takes bare ISO-639-1 codes; "multi" means auto-detect (omit). */
+export function whisperLanguage(language: DictationLanguage): string | undefined {
+	if (language === "multi") return undefined;
+	return language.split("-")[0]!.toLowerCase();
+}
+
+/** The worklet's capture rate (pcm-capture.js / the shared AudioContext). */
+export const DICTATION_SAMPLE_RATE = 16000;
+
+/** Wrap linear16 mono frames in a canonical 44-byte RIFF/WAVE header. */
+export function encodeWav(frames: readonly ArrayBuffer[], sampleRate: number = DICTATION_SAMPLE_RATE): ArrayBuffer {
+	const dataBytes = frames.reduce((n, f) => n + f.byteLength, 0);
+	const out = new ArrayBuffer(44 + dataBytes);
+	const view = new DataView(out);
+	const ascii = (at: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(at + i, s.charCodeAt(i)); };
+	ascii(0, "RIFF");
+	view.setUint32(4, 36 + dataBytes, true);
+	ascii(8, "WAVE");
+	ascii(12, "fmt ");
+	view.setUint32(16, 16, true); // PCM fmt chunk size
+	view.setUint16(20, 1, true); // format: PCM
+	view.setUint16(22, 1, true); // mono
+	view.setUint32(24, sampleRate, true);
+	view.setUint32(28, sampleRate * 2, true); // byte rate
+	view.setUint16(32, 2, true); // block align
+	view.setUint16(34, 16, true); // bits per sample
+	ascii(36, "data");
+	view.setUint32(40, dataBytes, true);
+	const bytes = new Uint8Array(out);
+	let at = 44;
+	for (const f of frames) { bytes.set(new Uint8Array(f), at); at += f.byteLength; }
+	return out;
+}

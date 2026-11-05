@@ -55,7 +55,7 @@ Advanced users can set a [prompt-cache retention preference](docs/compaction-acc
 
 All three platforms support in-app updates.
 
-**Dictation:** Create a [Deepgram API key](https://console.deepgram.com/) with the **Member role or higher** ([required for token minting](https://developers.deepgram.com/reference/auth/tokens/grant)) and add it under **Settings → Providers → Dictation**. Choose the language below the key; **Multilingual** supports automatic recognition and mixed-language speech. A `403 Insufficient permissions` error during token minting can indicate an insufficient key role.
+**Dictation:** Create a [Deepgram API key](https://console.deepgram.com/) with the **Member role or higher** ([required for token minting](https://developers.deepgram.com/reference/auth/tokens/grant)) and add it under **Settings → Providers → Dictation**. Choose the language below the key; **Multilingual** supports automatic recognition and mixed-language speech. A `403 Insufficient permissions` error during token minting can indicate an insufficient key role. To dictate locally instead, run a Whisper server in Docker and switch **Engine** to **Whisper (local)**; see [docker/whisper](docker/whisper/README.md).
 
 ## Your keys, your data
 

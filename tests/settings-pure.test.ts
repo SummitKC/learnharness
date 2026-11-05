@@ -251,6 +251,7 @@ describe("classifyKeys — the Keys section's two-group projection", () => {
 		const out = classifyKeys([synth("DEEPGRAM_API_KEY", true)], undefined);
 		assert.deepEqual(out.toolRows.map((r) => r.id), [
 			"DEEPGRAM_API_KEY",
+			"WHISPER_URL",
 			"TAVILY_API_KEY",
 			"BRAVE_API_KEY",
 			"SEARXNG_URL",

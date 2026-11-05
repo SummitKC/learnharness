@@ -41,6 +41,13 @@ export const AUTH_KEYS: readonly AuthKeyInfo[] = [
 		docsUrl: "https://console.deepgram.com/",
 	},
 	{
+		id: "WHISPER_URL",
+		label: "Whisper (local)",
+		description: "Base URL of your self-hosted Whisper server (e.g. http://localhost:8000) — any OpenAI-compatible /v1/audio/transcriptions endpoint, such as speaches in Docker. Local dictation, no cloud key.",
+		docsUrl: "https://speaches.ai/installation/",
+		valueKind: "url",
+	},
+	{
 		id: "TAVILY_API_KEY",
 		label: "Tavily",
 		description: "Web-search engine for the researcher sub-agent (AI-native search API). Setting the key activates it — no engine toggle needed.",
@@ -188,6 +195,10 @@ export function validateKeyShape(id: string, rawValue: string): KeyShapeResult {
 		case "DEEPGRAM_API_KEY":
 			// No public format — the length floor only catches truncated pastes.
 			return nonEmpty(20);
+		case "WHISPER_URL":
+			return isPlainBaseUrl(value)
+				? { ok: true }
+				: { ok: false, error: `${id} must be an http(s) base URL like http://localhost:8000 (no credentials, ? or #)` };
 		case "SEARXNG_URL":
 			return isPlainBaseUrl(value)
 				? { ok: true }
