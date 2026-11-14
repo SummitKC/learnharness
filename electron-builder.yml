@@ -187,8 +187,9 @@ publish:
   # from a private repo are impossible, and a token baked into the app
   # would be a leak. desktop:dist passes no --publish flag, so builds never
   # upload; publishing happens at release time (GH_TOKEN + --publish).
+  # Fork: updates come from SummitKC/learnharness releases, not upstream.
   - provider: github
-    owner: amosblomqvist
+    owner: SummitKC
     repo: learnharness
     # All three CI jobs contribute assets; only the owner publishes it.
     releaseType: draft
