@@ -74,6 +74,10 @@ export async function POST(request: Request) {
 	form.append("model", c.model);
 	form.append("response_format", "json");
 	form.append("temperature", "0");
+	// Voice-activity filter: faster-whisper drops non-speech before decoding,
+	// so pauses/room noise yield "" instead of a hallucinated "Thanks for
+	// watching." (a speaches/faster-whisper form field).
+	form.append("vad_filter", "true");
 	const language = new URL(request.url).searchParams.get("language");
 	if (language && /^[a-z]{2,3}$/.test(language)) form.append("language", language);
 

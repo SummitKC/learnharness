@@ -84,6 +84,19 @@ describe("pure helpers", () => {
 		assert.equal(v.getUint32(40, true), 6);
 		assert.deepEqual([...new Int16Array(wav, 44, 3)], [1, 2, 3]);
 	});
+
+	it("encodeWav copies Int16Array frames (what the worklet posts) byte-for-byte, never element-converted", () => {
+		// Values whose low byte alone would be wrong: element conversion to
+		// Uint8 yields half the bytes, all scrambled (the "Thanks for
+		// watching." hallucination bug).
+		const a = new Int16Array([1000, -1000]);
+		const backing = new Int16Array([0, 0, 30000, -30000, 0]);
+		const b = backing.subarray(2, 4); // a view with a non-zero byteOffset
+		const wav = encodeWav([a, b]);
+		assert.equal(wav.byteLength, 44 + 8);
+		assert.equal(new DataView(wav).getUint32(40, true), 8);
+		assert.deepEqual([...new Int16Array(wav, 44, 4)], [1000, -1000, 30000, -30000]);
+	});
 });
 
 describe("/api/stt/transcribe", async () => {
@@ -133,6 +146,7 @@ describe("/api/stt/transcribe", async () => {
 		assert.equal(form.get("model"), "custom/model");
 		assert.equal(form.get("language"), "pl");
 		assert.equal(form.get("response_format"), "json");
+		assert.equal(form.get("vad_filter"), "true", "silence must not decode into hallucinated phrases");
 		assert.equal((form.get("file") as File).size, 100);
 	});
 

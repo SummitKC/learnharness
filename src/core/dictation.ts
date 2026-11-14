@@ -120,8 +120,12 @@ export function whisperLanguage(language: DictationLanguage): string | undefined
 /** The worklet's capture rate (pcm-capture.js / the shared AudioContext). */
 export const DICTATION_SAMPLE_RATE = 16000;
 
-/** Wrap linear16 mono frames in a canonical 44-byte RIFF/WAVE header. */
-export function encodeWav(frames: readonly ArrayBuffer[], sampleRate: number = DICTATION_SAMPLE_RATE): ArrayBuffer {
+/** Wrap linear16 mono frames in a canonical 44-byte RIFF/WAVE header.
+ *  Frames may be raw buffers or typed-array views — the worklet posts
+ *  Int16Arrays. Views are copied byte-for-byte: `new Uint8Array(int16s)`
+ *  would CONVERT each sample to one truncated byte (half the data, all
+ *  noise — Whisper then hallucinates "Thanks for watching."). */
+export function encodeWav(frames: readonly (ArrayBuffer | ArrayBufferView)[], sampleRate: number = DICTATION_SAMPLE_RATE): ArrayBuffer {
 	const dataBytes = frames.reduce((n, f) => n + f.byteLength, 0);
 	const out = new ArrayBuffer(44 + dataBytes);
 	const view = new DataView(out);
@@ -141,6 +145,9 @@ export function encodeWav(frames: readonly ArrayBuffer[], sampleRate: number = D
 	view.setUint32(40, dataBytes, true);
 	const bytes = new Uint8Array(out);
 	let at = 44;
-	for (const f of frames) { bytes.set(new Uint8Array(f), at); at += f.byteLength; }
+	for (const f of frames) {
+		bytes.set(ArrayBuffer.isView(f) ? new Uint8Array(f.buffer, f.byteOffset, f.byteLength) : new Uint8Array(f), at);
+		at += f.byteLength;
+	}
 	return out;
 }
